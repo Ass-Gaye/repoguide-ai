@@ -1,14 +1,14 @@
 # RepoGuide AI
 
-RepoGuide AI is a hackathon-stage, locally-run AI tool that helps beginners understand an open-source repository and find their first contribution.
+RepoGuide AI is a locally run AI tool that helps beginners understand open-source projects and find a first contribution. Import a public GitHub repository or upload a repository ZIP, explore its file tree, and ask the local AI for a plain-language overview, technologies, setup instructions, three beginner-friendly contribution ideas, and questions to ask maintainers. Select an idea to get a step-by-step guide with prerequisites, verification steps, and a suggested pull request title and description.
 
-A user pastes a project's README/documentation into a web form, and a local AI model (running via Ollama) returns a plain-language project overview, detected technologies, setup instructions, three beginner-friendly contribution ideas, and questions to ask maintainers. The user can then pick one contribution and receive a step-by-step contribution guide (prerequisites, steps, verification steps, suggested PR title/description).
+## Why it matters for Africa
 
-The backend can also accept a repository `.zip` file, extract it safely, and serve its file tree and individual file contents. **Note:** the repository-upload feature is implemented on the backend only; there is no frontend UI to reach it in the current release.
+RepoGuide AI can make open-source projects easier to approach for people who are new to contributing, including learners and aspiring developers across Africa. By breaking down project information and offering practical first steps, it aims to lower the learning barrier to participating in global open-source communities. Its AI runs locally through Ollama, so it does not require a paid cloud AI account or API key. However, running a local model requires a compatible computer and an initial model download; importing a GitHub repository requires internet access. The current app is not specifically localized for African languages or tailored to particular countries or communities, and its contribution suggestions should be checked against the repository and with maintainers.
 
 ## Product positioning
 
-RepoGuide AI is positioned as a "friendly open-source mentor" for beginners rather than a code-generation/copilot tool. Per the system prompts embedded in the backend, the AI analyzes **only** the supplied project documentation. It does not claim to inspect source code, run commands, or check GitHub issues. Users are explicitly told to verify each suggestion against the actual repository before opening a pull request.
+RepoGuide AI is positioned as a "friendly open-source mentor" for beginners rather than a code-generation/copilot tool. The AI analyzes a bounded set of repository context: README, selected manifests/configuration/entry-point files, and a structural summary. It does not run commands or check GitHub issues, and it may not see every source file. Users are explicitly told to verify each suggestion against the actual repository before opening a pull request.
 
 ## Repository structure
 
@@ -99,7 +99,7 @@ npm run dev        # runs vite → http://localhost:5173
 
 ### 4. Use the application
 
-Open `http://localhost:5173`, paste a project's README into the textarea, and click "Analyze project".
+Open `http://localhost:5173`, then either upload a repository ZIP or enter a public GitHub repository URL. Once it is imported, choose **Analyze repository**. Browse files in the repository explorer, review the analysis and contribution ideas, and select **Start this contribution** to generate a detailed guide.
 
 ## Available scripts
 
@@ -125,9 +125,9 @@ All endpoints are unauthenticated. CORS is restricted to `http://localhost:5173`
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | GET | `/api/health` | Health check |
-| POST | `/api/analyze` | Analyze pasted README via Ollama |
+| POST | `/api/analyze` | Analyze imported repository context or pasted README via Ollama |
 | POST | `/api/guide` | Generate a contribution guide via Ollama |
-| POST | `/api/repository/upload` | Upload & extract a repository ZIP (backend only) |
+| POST | `/api/repository/upload` | Upload and extract a repository ZIP |
 | GET | `/api/repository/:repositoryId/tree` | Return extracted file tree |
 | GET | `/api/repository/:repositoryId/file` | Return text content of one file |
 
@@ -135,32 +135,30 @@ All endpoints are unauthenticated. CORS is restricted to `http://localhost:5173`
 
 These are real gaps in the current release, not planned future work:
 
-1. **No frontend UI for repository upload.** The backend ZIP-upload/tree/file-read endpoints are fully implemented, but `frontend/src/App.jsx` has no file input, so users cannot reach repository exploration through the application.
-2. **AI does not process source code.** Despite the ZIP-upload feature, no AI endpoint reads or analyzes uploaded repository files. The AI only ever receives pasted README text.
-3. **No authentication or database.** All state is in-memory; refreshing the page loses work. There are no users, no accounts, and no persistent storage.
-4. **No streaming AI responses.** `stream: false` is hardcoded; users wait for the complete model response (up to 120 seconds) before seeing anything.
-5. **No embeddings, vector search, or RAG.** There is no embedding model, vector database, or retrieval step.
-6. **No conversation history.** State lives only in React component memory.
-7. **No tests.** Zero unit, integration, or end-to-end test coverage exists.
-8. **Hardcoded localhost URLs.** The frontend calls `http://localhost:5000` and the backend calls `http://localhost:11434`; neither is configurable via environment variables. The app is not deployable beyond local development without code changes.
-9. **Ollama dependency undocumented in code.** If Ollama is not running with `gemma4:e2b`, the analyze and guide endpoints return errors with no operator guidance.
-10. **No backend `start`/`dev` scripts previously existed.** (Added in this stabilization.)
+1. **Analysis is bounded.** The AI receives selected project files and a repository summary, not every file or a complete understanding of the codebase.
+2. **No authentication or database.** There are no user accounts or persistent analysis history; repository sessions expire after 30 minutes.
+3. **No streaming AI responses.** `stream: false` is configured; users wait for the complete model response (up to 240 seconds) before seeing it.
+4. **No embeddings, vector search, or RAG.** There is no embedding model, vector database, or retrieval step.
+5. **No conversation history.** Analysis and guide state lives only in React component memory.
+6. **No tests.** There is no automated unit, integration, or end-to-end test coverage.
+7. **Local development configuration.** The frontend and Ollama URLs are hardcoded to localhost, so deployment beyond local development requires configuration changes.
+8. **Public repositories only.** GitHub import does not support private repositories; GitLab import is not available.
 
 ## What a user can currently do
 
-1. Paste a README into the frontend and click "Analyze project".
-2. Receive an AI-generated project overview, technology tags, setup instructions, three contribution cards, and maintainer questions.
-3. Click "Start this contribution →" on a card to receive a detailed contribution guide (prerequisites, steps, verification, PR title/description).
-4. Copy the full guide, individual tasks, PR title, or PR description to the clipboard.
+1. Import a public GitHub repository or upload a repository ZIP.
+2. Browse its file tree and preview supported text files.
+3. Analyze the repository to receive an AI-generated overview, technology tags, setup instructions, three contribution cards, and maintainer questions.
+4. Click "Start this contribution →" on a card to receive a detailed contribution guide (prerequisites, steps, verification, PR title/description).
+5. Copy the full guide, individual tasks, PR title, or PR description to the clipboard.
 
 ## What cannot be done in the current release
 
-- Upload a repository ZIP through the application UI.
-- Have the AI read or analyze actual repository source files.
+- Import private GitHub repositories or repositories from GitLab.
+- Have the AI inspect every file or execute/test the repository.
 - Log in, create an account, or save work across sessions.
 - Search repositories semantically or via code-aware search.
 - Compare multiple repositories.
-- Import a repository by GitHub/GitLab URL.
 
 ## Development constraints (do not change without good reason)
 
