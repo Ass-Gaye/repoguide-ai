@@ -660,6 +660,8 @@ app.post("/api/analyze", async (req, res) => {
     });
   }
 
+  const clientController = new AbortController();
+
   try {
     // Build the AI prompt from the repository context or README text.
     let userContent = "";
@@ -724,10 +726,18 @@ app.post("/api/analyze", async (req, res) => {
       userContent = `Analyze this project documentation:\n\n${aiContext.readme.content}`;
     }
 
+    // Stop the Ollama request if the client disconnects (e.g. Cancel).
+    res.on("close", () => {
+      if (!res.writableEnded) clientController.abort();
+    });
+
     const response = await fetch("http://localhost:11434/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(AI_TIMEOUT),
+      signal: AbortSignal.any([
+        AbortSignal.timeout(AI_TIMEOUT),
+        clientController.signal,
+      ]),
       body: JSON.stringify({
         model: AI_MODEL,
         think: false,
@@ -893,6 +903,12 @@ Return JSON only, matching the requested fields and types.`,
       maintainerQuestions: result.maintainerQuestions,
     });
   } catch (error) {
+    // The client cancelled: nobody is listening, so send no response.
+    if (clientController.signal.aborted) {
+      console.log("Analysis cancelled by the client.");
+      return;
+    }
+
     console.error("Analysis error:", error.message);
 
     if (error.message === "The AI returned an invalid contribution task.") {
@@ -959,6 +975,8 @@ app.post("/api/guide", async (req, res) => {
     });
   }
 
+  const clientController = new AbortController();
+
   try {
     // Build the AI prompt from the repository context or README text.
     let contextContent = "";
@@ -1011,10 +1029,18 @@ app.post("/api/guide", async (req, res) => {
       contextContent = `PROJECT DOCUMENTATION:\n${aiContext.readme.content}`;
     }
 
+    // Stop the Ollama request if the client disconnects (e.g. Cancel).
+    res.on("close", () => {
+      if (!res.writableEnded) clientController.abort();
+    });
+
     const response = await fetch("http://localhost:11434/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(AI_TIMEOUT),
+      signal: AbortSignal.any([
+        AbortSignal.timeout(AI_TIMEOUT),
+        clientController.signal,
+      ]),
       body: JSON.stringify({
         model: AI_MODEL,
         think: false,
@@ -1166,6 +1192,12 @@ Create a practical beginner contribution guide for this task.`,
       limitations: guide.limitations,
     });
   } catch (error) {
+    // The client cancelled: nobody is listening, so send no response.
+    if (clientController.signal.aborted) {
+      console.log("Guide generation cancelled by the client.");
+      return;
+    }
+
     console.error("Guide generation error:", error.message);
 
     res.status(503).json({
