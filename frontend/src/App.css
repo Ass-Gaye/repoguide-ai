@@ -961,3 +961,258 @@ footer {
     width: 100%;
   }
 }
+
+/* --------------------------------------------------
+   AI PROGRESS (slow requests: import, analyze, guide)
+   -------------------------------------------------- */
+
+.ai-progress {
+  text-align: left;
+}
+
+/* Compact variant shown inside the GitHub import block. */
+.upload-method .ai-progress {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid rgba(139, 124, 255, 0.25);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.ai-progress-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.ai-spinner {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  border: 3px solid rgba(139, 124, 255, 0.25);
+  border-top-color: #8b7cff;
+  border-radius: 50%;
+  animation: ai-spin 0.9s linear infinite;
+}
+
+.ai-progress-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ai-progress-title {
+  margin: 0 0 6px;
+  color: #f7f8fc;
+  font-size: 17px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.ai-progress-description {
+  margin: 0;
+  color: #96a2b8;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ai-elapsed {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border: 1px solid #34445b;
+  border-radius: 99px;
+  color: #c7d6b6;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-steps {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #66738a;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ai-step-marker {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #34415b;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+  box-sizing: border-box;
+}
+
+.ai-step-done {
+  color: #c8d6ad;
+}
+
+.ai-step-done .ai-step-marker {
+  border-color: #b9f36b;
+  background: #b9f36b;
+  color: #13200a;
+}
+
+.ai-step-active {
+  color: #e9edf5;
+  font-weight: 650;
+}
+
+.ai-step-active .ai-step-marker {
+  border-color: #8b7cff;
+  background: rgba(139, 124, 255, 0.15);
+  animation: ai-pulse 1.4s ease-in-out infinite;
+}
+
+.ai-slow-hint {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(139, 124, 255, 0.3);
+  border-radius: 10px;
+  background: rgba(139, 124, 255, 0.08);
+  color: #c9c2ff;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ai-cancel-button {
+  margin-top: 18px;
+}
+
+/* Skeleton placeholder for the Project Overview card. */
+.skeleton-card {
+  text-align: left;
+}
+
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(139, 124, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: ai-shimmer 1.6s ease-in-out infinite;
+}
+
+.skeleton-heading {
+  width: 45%;
+  height: 20px;
+  margin-bottom: 10px;
+}
+
+.skeleton-subheading {
+  width: 30%;
+  height: 12px;
+  margin-bottom: 24px;
+}
+
+.skeleton-line {
+  width: 100%;
+  height: 12px;
+  margin-bottom: 10px;
+}
+
+.skeleton-line-short {
+  width: 60%;
+}
+
+.skeleton-label {
+  width: 120px;
+  max-width: 50%;
+  height: 14px;
+  margin: 22px 0 12px;
+}
+
+.skeleton-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skeleton-pill {
+  width: 84px;
+  height: 26px;
+  border-radius: 99px;
+}
+
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ai-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(139, 124, 255, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(139, 124, 255, 0);
+  }
+}
+
+@keyframes ai-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-spinner,
+  .ai-step-active .ai-step-marker,
+  .skeleton {
+    animation: none;
+  }
+
+  /* Static ring instead of a spinning one. */
+  .ai-spinner {
+    border-color: #8b7cff;
+  }
+
+  .skeleton {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+@media (max-width: 600px) {
+  .ai-progress-header {
+    flex-wrap: wrap;
+  }
+
+  /* Spinner and timer share the first row; the text wraps below. */
+  .ai-elapsed {
+    margin-left: auto;
+  }
+
+  .ai-progress-text {
+    order: 1;
+    flex-basis: 100%;
+  }
+
+  .upload-method .ai-progress {
+    padding: 14px;
+  }
+
+  .ai-cancel-button {
+    width: 100%;
+  }
+}

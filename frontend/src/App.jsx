@@ -1,6 +1,25 @@
 
 import { useState, useRef } from "react";
 import "./App.css";
+import { AiProgress, OverviewSkeleton } from "./AiProgress.jsx";
+
+const IMPORT_STEPS = [
+  "Checking the repository on GitHub",
+  "Downloading the code",
+  "Building the file tree",
+];
+
+const ANALYZE_STEPS = [
+  "Reading the project files",
+  "Preparing context for the model",
+  "Gemma is analyzing the project",
+];
+
+const GUIDE_STEPS = [
+  "Reading the selected task",
+  "Finding the files involved",
+  "Writing your step-by-step guide",
+];
 
 function App() {
   const [githubUrl, setGithubUrl] = useState("");
@@ -29,6 +48,11 @@ function App() {
   const githubUrlInput = useRef(null);
   const fileRequestController = useRef(null);
 
+  // One AbortController per slow request, so each can be cancelled.
+  const importController = useRef(null);
+  const analyzeController = useRef(null);
+  const guideController = useRef(null);
+
   // Guided Contribution Assistant state.
   const [guide, setGuide] = useState(null);
   const [guideError, setGuideError] = useState("");
@@ -36,6 +60,9 @@ function App() {
   const [selectedTask, setSelectedTask] = useState("");
 
   async function analyzeRepository() {
+    analyzeController.current?.abort();
+    const controller = new AbortController();
+    analyzeController.current = controller;
 
     setResult(null);
     setGuide(null);
@@ -50,6 +77,7 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ repositoryId }),
+        signal: controller.signal,
       });
 
       const data = await response.json();
@@ -60,17 +88,32 @@ function App() {
 
       setResult(data);
     } catch (err) {
+      // A cancelled request is not an error.
+      if (err.name === "AbortError") return;
+
       setError(
         err.message ||
           "Could not connect to RepoGuide AI. Check that the backend and Ollama are running."
       );
     } finally {
-      setLoading(false);
+      // Only the latest request may reset the loading state.
+      if (analyzeController.current === controller) {
+        analyzeController.current = null;
+        setLoading(false);
+      }
     }
+  }
+
+  function cancelAnalysis() {
+    analyzeController.current?.abort();
   }
 
   // Generate a practical guide for the selected contribution.
   async function startContribution(contribution) {
+    guideController.current?.abort();
+    const controller = new AbortController();
+    guideController.current = controller;
+
     setGuide(null);
     setGuideError("");
     setSelectedTask(contribution.task);
@@ -86,6 +129,7 @@ function App() {
           repositoryId,
           contribution,
         }),
+        signal: controller.signal,
       });
 
       const data = await response.json();
@@ -96,13 +140,25 @@ function App() {
 
       setGuide(data);
     } catch (err) {
+      // A cancelled request is not an error.
+      if (err.name === "AbortError") return;
+
       setGuideError(
         err.message ||
           "Could not generate the guide. Check that the backend and Ollama are running."
       );
     } finally {
-      setGuideLoading(false);
+      // Only the latest request may reset the loading state.
+      if (guideController.current === controller) {
+        guideController.current = null;
+        setGuideLoading(false);
+      }
     }
+  }
+
+  function cancelGuide() {
+    guideController.current?.abort();
+    setSelectedTask("");
   }
 
   async function copyText(text) {
@@ -192,6 +248,10 @@ function App() {
       return;
     }
 
+    importController.current?.abort();
+    const controller = new AbortController();
+    importController.current = controller;
+
     setImportLoading(true);
     setUploadError("");
     setUploadSuccess("");
@@ -203,6 +263,7 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ githubUrl: url }),
+        signal: controller.signal,
       });
 
       const data = await response.json();
@@ -231,10 +292,21 @@ function App() {
         githubUrlInput.current.value = "";
       }
     } catch (err) {
+      // A cancelled request is not an error.
+      if (err.name === "AbortError") return;
+
       setUploadError(err.message || "Could not import the GitHub repository.");
     } finally {
-      setImportLoading(false);
+      // Only the latest request may reset the loading state.
+      if (importController.current === controller) {
+        importController.current = null;
+        setImportLoading(false);
+      }
     }
+  }
+
+  function cancelImport() {
+    importController.current?.abort();
   }
 
   // --------------------------------------------------
@@ -323,6 +395,10 @@ function App() {
   // --------------------------------------------------
 
   function clearRepository() {
+    // Stop any running AI request for the repository being cleared.
+    analyzeController.current?.abort();
+    guideController.current?.abort();
+
     setRepositoryId("");
     setRepositoryName("");
     setTotalFiles(0);
@@ -533,6 +609,16 @@ function App() {
             <p className="github-hint">
               Public repositories only. No credentials required.
             </p>
+            {importLoading && (
+              <AiProgress
+                title="Importing repository..."
+                description="Fetching the code from GitHub so you can explore it."
+                steps={IMPORT_STEPS}
+                stepIntervalMs={2000}
+                slowHint="Large repositories or slow connections can take a while. You can keep waiting or cancel."
+                onCancel={cancelImport}
+              />
+            )}
           </div>
 
           {uploadError && <p className="error-message">{uploadError}</p>}
@@ -543,24 +629,34 @@ function App() {
       </section>
 
       {/* Analyze Repository Button (shown after repository is loaded) */}
-      {repositoryId && !result && !loading && (
+      {repositoryId && !result && (
         <section className="repository-upload">
-          <div className="upload-card">
-            <div className="card-heading">
-              <div>
-                <h2>Analyze Repository</h2>
-                <p>Analyze "{repositoryName}" with RepoGuide AI.</p>
+          {loading ? (
+            <AiProgress
+              className="upload-card"
+              title={`Analyzing “${repositoryName}”...`}
+              description="Your local AI is reading the project. This can take a few minutes on your computer."
+              steps={ANALYZE_STEPS}
+              onCancel={cancelAnalysis}
+            />
+          ) : (
+            <div className="upload-card">
+              <div className="card-heading">
+                <div>
+                  <h2>Analyze Repository</h2>
+                  <p>Analyze "{repositoryName}" with RepoGuide AI.</p>
+                </div>
               </div>
+              <button
+                type="button"
+                className="start-guide-button"
+                onClick={analyzeRepository}
+                disabled={loading}
+              >
+                {loading ? "Analyzing..." : "Analyze repository →"}
+              </button>
             </div>
-            <button
-              type="button"
-              className="start-guide-button"
-              onClick={analyzeRepository}
-              disabled={loading}
-            >
-              {loading ? "Analyzing..." : "Analyze repository →"}
-            </button>
-          </div>
+          )}
         </section>
       )}
 
@@ -637,22 +733,8 @@ function App() {
         </section>
       )}
 
-      {/* Analysis Loading State */}
-      {loading && (
-        <section className="repository-upload">
-          <div className="upload-card">
-            <div className="card-heading">
-              <div>
-                <h2>Analyzing Repository...</h2>
-                <p>
-                  Your local AI is analyzing &ldquo;{repositoryName}&rdquo;.
-                  This may take a minute on your computer.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Analysis Loading State: placeholder where the overview will appear */}
+      {loading && <OverviewSkeleton />}
 
       {/* Analysis Error */}
       {error && !loading && (
@@ -798,13 +880,13 @@ function App() {
           </div>
 
           {guideLoading && (
-            <section className="guide-loading" role="status">
-              <h2>Preparing your contribution guide...</h2>
-              <p>
-                RepoGuide AI is breaking this task into beginner-friendly
-                steps. This may take a little while on your computer.
-              </p>
-            </section>
+            <AiProgress
+              className="guide-loading"
+              title="Preparing your contribution guide..."
+              description="RepoGuide AI is breaking this task into beginner-friendly steps. This can take a few minutes on your computer."
+              steps={GUIDE_STEPS}
+              onCancel={cancelGuide}
+            />
           )}
 
           {guideError && (
